@@ -1,7 +1,7 @@
-# scraper.py
 from selenium import webdriver
-from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from urllib.parse import quote
@@ -11,16 +11,14 @@ def get_valorant_stats(username):
     url = f"https://tracker.gg/valorant/profile/riot/{encoded_username}/overview"
 
     options = Options()
-    options.headless = True
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-   
-    # On Render the paths are usually:
     options.binary_location = "/usr/bin/chromium"
-    driver_path = "/usr/bin/chromedriver"
 
-    driver = webdriver.Chrome(executable_path=driver_path, options=options)
+    # ✅ NEW: Use Service object
+    service = Service(executable_path="/usr/bin/chromedriver")
+    driver = webdriver.Chrome(service=service, options=options)
 
     try:
         driver.get(url)
@@ -30,6 +28,7 @@ def get_valorant_stats(username):
         )
 
         match = driver.find_element(By.CSS_SELECTOR, "div.trn-match-row")
+
         agent = match.find_element(By.CSS_SELECTOR, "div.vmr-agent img").get_attribute("alt")
         map_name = match.find_element(By.CSS_SELECTOR, "div.vmr-metadata div.trn-match-row__text-value").text
         result_class = match.get_attribute("class")
@@ -50,7 +49,7 @@ def get_valorant_stats(username):
             "kd_ratio": kd_ratio,
             "adr": adr,
             "acs": acs,
-            "hs_percent": hs_percent
+            "hs_percent": hs_percent,
         }
 
     finally:
