@@ -7,8 +7,7 @@ app = Flask(__name__)
 def stats():
     username = request.args.get("username")
     if not username:
-        return jsonify({"error": "Missing username param"}), 400
-    try:
-        return jsonify(get_valorant_stats(username))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Missing username"}), 400
+
+    data = asyncio.run(get_valorant_stats(username))
+    return jsonify(data)
