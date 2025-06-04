@@ -39,7 +39,6 @@ async def get_valorant_stats(username):
         finally:
             await browser.close()
 
-# for testing
 if __name__ == "__main__":
     username = input("Enter Riot username (e.g. birjuan#69420): ")
     data = asyncio.run(get_valorant_stats(username))
