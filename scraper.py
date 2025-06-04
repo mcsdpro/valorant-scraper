@@ -1,62 +1,46 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import asyncio
 from urllib.parse import quote
+from playwright.async_api import async_playwright
 
-def get_valorant_stats(username):
+async def get_valorant_stats(username):
     encoded_username = quote(username)
     url = f"https://tracker.gg/valorant/profile/riot/{encoded_username}/overview"
 
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--disable-software-rasterizer")
-    options.add_argument("--no-zygote")
-    options.add_argument("--single-process")
+    async with async_playwright() as p:
+        browser = await p.chromium.launch(headless=True)
+        page = await browser.new_page()
+        await page.goto(url, timeout=60000)
 
-    
-    options.binary_location = "/usr/bin/chromium"
+        try:
+            await page.wait_for_selector("div.trn-match-row", timeout=20000)
+            match = await page.query_selector("div.trn-match-row")
 
-    # ✅ NEW: Use Service object
-    service = Service(executable_path="/usr/bin/chromedriver")
-    driver = webdriver.Chrome(service=service, options=options)
+            agent = await match.query_selector("div.vmr-agent img")
+            map_name = await match.query_selector("div.vmr-metadata div.trn-match-row__text-value")
+            result_class = await match.get_attribute("class")
+            score = await match.query_selector("div.vmr-score .trn-match-row__text-value")
+            kda = await match.query_selector("xpath=.//div[.='K / D / A']/following-sibling::div")
+            kd_ratio = await match.query_selector("xpath=.//div[.='K/D']/following-sibling::div")
+            adr = await match.query_selector("xpath=.//div[.='ADR']/following-sibling::div")
+            acs = await match.query_selector("xpath=.//div[.='ACS']/following-sibling::div")
+            hs_percent = await match.query_selector("xpath=.//div[.='HS%']/following-sibling::div")
 
-    try:
-        driver.get(url)
+            return {
+                "agent": await agent.get_attribute("alt") if agent else None,
+                "map": await map_name.text_content() if map_name else None,
+                "result": "Loss" if "trn-match-row--outcome-loss" in result_class else "Win",
+                "score": await score.text_content() if score else None,
+                "kda": await kda.text_content() if kda else None,
+                "kd_ratio": await kd_ratio.text_content() if kd_ratio else None,
+                "adr": await adr.text_content() if adr else None,
+                "acs": await acs.text_content() if acs else None,
+                "hs_percent": await hs_percent.text_content() if hs_percent else None,
+            }
+        finally:
+            await browser.close()
 
-        WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "div.trn-match-row"))
-        )
-
-        match = driver.find_element(By.CSS_SELECTOR, "div.trn-match-row")
-
-        agent = match.find_element(By.CSS_SELECTOR, "div.vmr-agent img").get_attribute("alt")
-        map_name = match.find_element(By.CSS_SELECTOR, "div.vmr-metadata div.trn-match-row__text-value").text
-        result_class = match.get_attribute("class")
-        result = "Loss" if "trn-match-row--outcome-loss" in result_class else "Win"
-        score = match.find_element(By.CSS_SELECTOR, "div.vmr-score .trn-match-row__text-value").text
-        kda = match.find_element(By.XPATH, ".//div[.='K / D / A']/following-sibling::div").text
-        kd_ratio = match.find_element(By.XPATH, ".//div[.='K/D']/following-sibling::div").text
-        adr = match.find_element(By.XPATH, ".//div[.='ADR']/following-sibling::div").text
-        acs = match.find_element(By.XPATH, ".//div[.='ACS']/following-sibling::div").text
-        hs_percent = match.find_element(By.XPATH, ".//div[.='HS%']/following-sibling::div").text
-
-        return {
-            "agent": agent,
-            "map": map_name,
-            "result": result,
-            "score": score,
-            "kda": kda,
-            "kd_ratio": kd_ratio,
-            "adr": adr,
-            "acs": acs,
-            "hs_percent": hs_percent,
-        }
-
-    finally:
-        driver.quit()
+# for testing
+if __name__ == "__main__":
+    username = input("Enter Riot username (e.g. birjuan#69420): ")
+    data = asyncio.run(get_valorant_stats(username))
+    print(data)
