@@ -14,4 +14,4 @@ WORKDIR /app
 COPY . /app
 
 # Run the app
-CMD ["gunicorn", "app:app"]
+CMD ["gunicorn", "--workers=1", "--threads=1", "--timeout=60", "app:app"]
