@@ -1,7 +1,2 @@
-discord.py
-python-multipart
-fastapi
-uvicorn
-jinja2
+flask
 selenium
-undetected_chromedriver
