@@ -1,53 +1,53 @@
+# scraper.py
+from selenium import webdriver
 from selenium.webdriver.common.by import By
-import undetected_chromedriver as uc
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from urllib.parse import quote
 
+def get_valorant_stats(username):
+    encoded_username = quote(username)
+    url = f"https://tracker.gg/valorant/profile/riot/{encoded_username}/overview"
 
-driver = uc.Chrome()
+    options = Options()
+    options.headless = True
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.binary_location = "/usr/bin/chromium-browser"
 
-username = input("Enter Valorant username with tag (e.g., her dawg#W00f): ")
+    driver = webdriver.Chrome(options=options)
 
-encoded_username = quote(username)
+    try:
+        driver.get(url)
 
-url = f"https://tracker.gg/valorant/profile/riot/{encoded_username}/overview"
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "div.trn-match-row"))
+        )
 
-driver.get(url)
+        match = driver.find_element(By.CSS_SELECTOR, "div.trn-match-row")
+        agent = match.find_element(By.CSS_SELECTOR, "div.vmr-agent img").get_attribute("alt")
+        map_name = match.find_element(By.CSS_SELECTOR, "div.vmr-metadata div.trn-match-row__text-value").text
+        result_class = match.get_attribute("class")
+        result = "Loss" if "trn-match-row--outcome-loss" in result_class else "Win"
+        score = match.find_element(By.CSS_SELECTOR, "div.vmr-score .trn-match-row__text-value").text
+        kda = match.find_element(By.XPATH, ".//div[.='K / D / A']/following-sibling::div").text
+        kd_ratio = match.find_element(By.XPATH, ".//div[.='K/D']/following-sibling::div").text
+        adr = match.find_element(By.XPATH, ".//div[.='ADR']/following-sibling::div").text
+        acs = match.find_element(By.XPATH, ".//div[.='ACS']/following-sibling::div").text
+        hs_percent = match.find_element(By.XPATH, ".//div[.='HS%']/following-sibling::div").text
 
-try:
-    # Wait for match rows to load
-    WebDriverWait(driver, 20).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, "div.trn-match-row"))
-    )
+        return {
+            "agent": agent,
+            "map": map_name,
+            "result": result,
+            "score": score,
+            "kda": kda,
+            "kd_ratio": kd_ratio,
+            "adr": adr,
+            "acs": acs,
+            "hs_percent": hs_percent
+        }
 
-    # Grab the first match row (latest match)
-    match = driver.find_element(By.CSS_SELECTOR, "div.trn-match-row")
-
-    # Extract fields:
-
-    agent = match.find_element(By.CSS_SELECTOR, "div.vmr-agent img").get_attribute("alt")
-    map_name = match.find_element(By.CSS_SELECTOR, "div.vmr-metadata div.trn-match-row__text-value").text
-    result_class = match.get_attribute("class")  # contains 'trn-match-row--outcome-loss' or '...-win'
-    result = "Loss" if "trn-match-row--outcome-loss" in result_class else "Win"
-    score = match.find_element(By.CSS_SELECTOR, "div.vmr-score .trn-match-row__text-value").text
-    kda = match.find_element(By.XPATH, ".//div[.='K / D / A']/following-sibling::div").text
-    kd_ratio = match.find_element(By.XPATH, ".//div[.='K/D']/following-sibling::div").text
-    adr = match.find_element(By.XPATH, ".//div[.='ADR']/following-sibling::div").text
-    acs = match.find_element(By.XPATH, ".//div[.='ACS']/following-sibling::div").text
-    hs_percent = match.find_element(By.XPATH, ".//div[.='HS%']/following-sibling::div").text
-
-    print(f"Agent: {agent}")
-    print(f"Map: {map_name}")
-    print(f"Result: {result}")
-    print(f"Score: {score}")
-    print(f"K/D/A: {kda}")
-    print(f"K/D Ratio: {kd_ratio}")
-    print(f"ADR: {adr}")
-    print(f"ACS: {acs}")
-    print(f"Headshot %: {hs_percent}")
-
-    pass
-finally:
-    driver.quit()
-    del driver
+    finally:
+        driver.quit()
