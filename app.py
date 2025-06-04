@@ -1,4 +1,3 @@
-# app.py
 from flask import Flask, request, jsonify
 from scraper import get_valorant_stats
 
@@ -8,10 +7,8 @@ app = Flask(__name__)
 def stats():
     username = request.args.get("username")
     if not username:
-        return jsonify({"error": "Missing ?username=..."}), 400
-
+        return jsonify({"error": "Missing username param"}), 400
     try:
-        data = get_valorant_stats(username)
-        return jsonify(data)
+        return jsonify(get_valorant_stats(username))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
